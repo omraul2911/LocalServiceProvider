@@ -1,0 +1,95 @@
+import { useState } from 'react';
+import { useAuth } from '../hooks/useAuth';
+import { useNavigate, Link } from 'react-router-dom';
+
+export default function Register() {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [role, setRole] = useState('customer');
+  const [error, setError] = useState(null);
+  const { register } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const data = await register(name, email, password, role);
+      if (data.role === 'provider') {
+        navigate('/provider-dashboard');
+      } else {
+        navigate('/dashboard');
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Registration failed');
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8 bg-white p-10 rounded-2xl shadow-xl border border-gray-100">
+        <div>
+          <h2 className="mt-2 text-center text-3xl font-extrabold font-heading text-gray-900">Create an account</h2>
+        </div>
+        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+          {error && <div className="bg-red-50 text-error p-3 rounded-md text-sm text-center">{error}</div>}
+          <div className="rounded-md space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Full Name</label>
+              <input
+                type="text"
+                required
+                className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:ring-primary focus:border-primary sm:text-sm"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Email address</label>
+              <input
+                type="email"
+                required
+                className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:ring-primary focus:border-primary sm:text-sm"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Password</label>
+              <input
+                type="password"
+                required
+                className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:ring-primary focus:border-primary sm:text-sm"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">I am a...</label>
+              <select
+                className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:ring-primary focus:border-primary sm:text-sm bg-white"
+                value={role}
+                onChange={(e) => setRole(e.target.value)}
+              >
+                <option value="customer">Customer (Looking for services)</option>
+                <option value="provider">Professional (Offering services)</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+             <button
+              type="submit"
+              className="w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-xl text-white bg-primary hover:bg-blue-700 shadow-lg shadow-blue-500/30 transition-all font-sans"
+            >
+              Register
+            </button>
+          </div>
+          <div className="text-center text-sm text-gray-600">
+            Already have an account? <Link to="/login" className="font-semibold text-primary hover:text-blue-700">Login</Link>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
