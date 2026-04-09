@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const ProviderProfile = require('../models/ProviderProfile');
+const Booking = require('../models/Booking');
+const Review = require('../models/Review');
 const { protect, providerOnly } = require('../middleware/authMiddleware');
 
 // Get all providers (Search)
@@ -79,6 +81,64 @@ router.put('/profile', protect, providerOnly, async (req, res) => {
       });
       res.status(201).json(profile);
     }
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Provider Analytics
+router.get('/analytics/dashboard', protect, providerOnly, async (req, res) => {
+  try {
+    const providerId = req.user._id;
+
+    const bookings = await Booking.find({ providerId });
+    const reviews = await Review.find({ providerId });
+
+    const totalBookings = bookings.length;
+    const completedJobs = bookings.filter(b => b.status === 'Completed').length;
+    const pendingRequests = bookings.filter(b => b.status === 'Requested').length;
+    
+    const totalEarnings = bookings
+      .filter(b => b.status === 'Completed')
+      .reduce((sum, b) => sum + Number(b.price || 0), 0);
+
+    const averageRating = reviews.length > 0 
+      ? (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(1) 
+      : 0;
+
+    const statusObj = bookings.reduce((acc, booking) => {
+      acc[booking.status] = (acc[booking.status] || 0) + 1;
+      return acc;
+    }, {});
+
+    const statusDistribution = Object.keys(statusObj).map(status => ({
+        name: status,
+        value: statusObj[status]
+    }));
+
+    const dateObj = bookings.reduce((acc, booking) => {
+      if (booking.date) {
+        acc[booking.date] = (acc[booking.date] || 0) + 1;
+      }
+      return acc;
+    }, {});
+    
+    const bookingsOverTime = Object.keys(dateObj)
+      .sort((a, b) => new Date(a) - new Date(b))
+      .map(date => ({
+        date,
+        count: dateObj[date]
+      }));
+
+    res.json({
+      totalBookings,
+      completedJobs,
+      pendingRequests,
+      totalEarnings,
+      averageRating: parseFloat(averageRating),
+      bookingsOverTime,
+      statusDistribution
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
