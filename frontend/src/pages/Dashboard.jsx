@@ -39,6 +39,23 @@ export default function Dashboard() {
     }
   };
 
+  const handleDownloadReceipt = async (bookingId) => {
+    try {
+      const response = await api.get(`/bookings/${bookingId}/receipt`, {
+        responseType: 'blob'
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `receipt-${bookingId}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode.removeChild(link);
+    } catch (err) {
+      alert('Failed to download receipt');
+    }
+  };
+
   const handleReviewSubmit = async (e) => {
     e.preventDefault();
     setSubmittingReview(true);
@@ -115,7 +132,10 @@ export default function Dashboard() {
                   
                   {/* Reviews for Customer */}
                   {user.role === 'customer' && booking.status === 'Completed' && (
-                    <button onClick={() => setReviewingBooking(booking)} className="text-primary hover:underline text-sm font-medium">Leave a Review</button>
+                    <div className="flex flex-col gap-2 items-end mt-2">
+                       <button onClick={() => setReviewingBooking(booking)} className="text-primary hover:underline text-sm font-medium">Leave a Review</button>
+                       <button onClick={() => handleDownloadReceipt(booking._id)} className="text-green-600 hover:text-green-800 hover:underline text-sm font-medium">Download Receipt</button>
+                    </div>
                   )}
                 </div>
               </div>
