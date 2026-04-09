@@ -66,6 +66,23 @@ export default function ProviderDashboard() {
     }
   };
 
+  const handleDownloadReceipt = async (bookingId) => {
+    try {
+      const response = await api.get(`/bookings/${bookingId}/receipt`, {
+        responseType: 'blob'
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `receipt-${bookingId}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode.removeChild(link);
+    } catch (err) {
+      alert('Failed to download receipt');
+    }
+  };
+
   const handleProfileSave = async (e) => {
     if (e) e.preventDefault();
     setSavingProfile(true);
@@ -215,6 +232,9 @@ export default function ProviderDashboard() {
                       )}
                       {booking.status === 'In Progress' && (
                         <button onClick={() => updateBookingStatus(booking._id, 'Completion Requested')} className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-sm">Request Completion</button>
+                      )}
+                      {booking.status === 'Completed' && (
+                        <button onClick={() => handleDownloadReceipt(booking._id)} className="px-3 py-1 bg-gray-100 text-green-700 hover:bg-gray-200 border border-green-200 rounded text-sm font-medium">Download Receipt</button>
                       )}
                     </div>
                   </div>
