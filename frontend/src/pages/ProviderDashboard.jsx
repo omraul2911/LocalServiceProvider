@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { api, useAuth } from '../hooks/useAuth';
-import { User, Briefcase, Calendar, Folder, List } from 'lucide-react';
+import { User, Briefcase, Calendar, Folder, List, PieChart as PieChartIcon } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 export default function ProviderDashboard() {
   const { user, logout } = useAuth();
@@ -21,6 +22,10 @@ export default function ProviderDashboard() {
   // Bookings state
   const [bookings, setBookings] = useState([]);
   const [loadingBookings, setLoadingBookings] = useState(true);
+
+  // Analytics state
+  const [analyticsData, setAnalyticsData] = useState(null);
+  const [loadingAnalytics, setLoadingAnalytics] = useState(true);
 
   const fetchProfile = async () => {
     try {
@@ -50,10 +55,21 @@ export default function ProviderDashboard() {
     setLoadingBookings(false);
   };
 
+  const fetchAnalytics = async () => {
+    try {
+      const { data } = await api.get('/providers/analytics/dashboard');
+      setAnalyticsData(data);
+    } catch (error) {
+      console.error(error);
+    }
+    setLoadingAnalytics(false);
+  };
+
   useEffect(() => {
     fetchProfile();
     fetchBookings();
-    const interval = setInterval(fetchBookings, 5000); // short polling
+    fetchAnalytics();
+    const interval = setInterval(() => { fetchBookings(); fetchAnalytics(); }, 5000);
     return () => clearInterval(interval);
   }, []);
 
@@ -153,7 +169,10 @@ export default function ProviderDashboard() {
     setProfile({ ...profile, availability: newAvail });
   };
 
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
+
   const tabs = [
+    { id: 'analytics', name: 'Analytics', icon: <PieChartIcon className="w-5 h-5" /> },
     { id: 'bookings', name: 'Bookings', icon: <List className="w-5 h-5" /> },
     { id: 'profile', name: 'Profile Basics', icon: <User className="w-5 h-5" /> },
     { id: 'services', name: 'Services', icon: <Briefcase className="w-5 h-5" /> },
@@ -192,6 +211,80 @@ export default function ProviderDashboard() {
 
       {/* Main Content Area */}
       <div className="flex-1 bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+        
+        {/* Analytics Tab */}
+        {activeTab === 'analytics' && (
+          <div>
+            <h2 className="text-2xl font-bold font-heading mb-6">Performance Analytics</h2>
+            
+            {loadingAnalytics || !analyticsData ? (
+              <div className="text-center py-20 text-gray-500">Loading analytics data...</div>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                  <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl text-center shadow-sm">
+                     <h3 className="text-sm font-bold text-blue-800">Total Bookings</h3>
+                     <p className="text-3xl font-black text-blue-600 mt-2">{analyticsData.totalBookings}</p>
+                  </div>
+                  <div className="bg-green-50 border border-green-100 p-4 rounded-xl text-center shadow-sm">
+                     <h3 className="text-sm font-bold text-green-800">Completed Jobs</h3>
+                     <p className="text-3xl font-black text-green-600 mt-2">{analyticsData.completedJobs}</p>
+                  </div>
+                  <div className="bg-yellow-50 border border-yellow-100 p-4 rounded-xl text-center shadow-sm">
+                     <h3 className="text-sm font-bold text-yellow-800">Pending Requests</h3>
+                     <p className="text-3xl font-black text-yellow-600 mt-2">{analyticsData.pendingRequests}</p>
+                  </div>
+                  <div className="bg-purple-50 border border-purple-100 p-4 rounded-xl text-center shadow-sm">
+                     <h3 className="text-sm font-bold text-purple-800">Total Earnings</h3>
+                     <p className="text-3xl font-black text-purple-600 mt-2">${analyticsData.totalEarnings}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm leading-tight">
+                    <h3 className="font-bold text-lg mb-4 text-center text-gray-700">Bookings Over Time</h3>
+                    <div className="h-64">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={analyticsData.bookingsOverTime} margin={{top: 5, right: 30, left: 20, bottom: 5}}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="date" />
+                          <YAxis allowDecimals={false} />
+                          <Tooltip />
+                          <Bar dataKey="count" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+
+                  <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
+                    <h3 className="font-bold text-lg mb-4 text-center text-gray-700">Status Distribution</h3>
+                    <div className="h-64 flex justify-center">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={analyticsData.statusDistribution}
+                            cx="50%"
+                            cy="50%"
+                            outerRadius={80}
+                            fill="#8884d8"
+                            dataKey="value"
+                            label={({name, percent}) => `${name} ${(percent * 100).toFixed(0)}%`}
+                          >
+                            {analyticsData.statusDistribution.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip />
+                          <Legend />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
         
         {/* Bookings Tab */}
         {activeTab === 'bookings' && (
